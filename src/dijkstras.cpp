@@ -2,47 +2,32 @@
 
 // Dijkstra's algorithm to find shortest paths from source to all other vertices
 vector<int> dijkstra_shortest_path(const Graph& G, int source, vector<int>& previous) {
-    // Initialize distances and previous array
-    vector<int> distances(G.numVertices, INF);
-    previous.resize(G.numVertices, -1);
-    vector<bool> visited(G.numVertices, false);
+    int n = G.numVertices;
+    vector<int> distances(n, INF);
+    previous.assign(n, -1);
     
-    // Custom comparator for priority queue (min heap)
-    struct CompareNode {
-        bool operator()(const pair<int, int>& a, const pair<int, int>& b) {
-            return a.second > b.second; // Min heap based on distance
-        }
-    };
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
     
-    // Priority queue of (vertex, distance) pairs
-    priority_queue<pair<int, int>, vector<pair<int, int>>, CompareNode> pq;
-    
-    // Start with the source vertex
     distances[source] = 0;
-    pq.push({source, 0});
+    pq.push({0, source});
     
     while (!pq.empty()) {
-        // Get vertex with minimum distance
-        int u = pq.top().first;
+        int u = pq.top().second;
+        int dist_u = pq.top().first;
         pq.pop();
         
-        // Skip if already processed
-        if (visited[u]) {
+        if (dist_u > distances[u]) {
             continue;
         }
         
-        visited[u] = true;
-        
-        // Process all adjacent vertices
-        for (const Edge& e : G[u]) {
-            int v = e.dst;
-            int weight = e.weight;
+        for (const Edge& edge : G[u]) {
+            int v = edge.dst;
+            int weight = edge.weight;
             
-            // Relaxation step
-            if (!visited[v] && distances[u] != INF && distances[u] + weight < distances[v]) {
+            if (distances[u] != INF && distances[u] + weight < distances[v]) {
                 distances[v] = distances[u] + weight;
                 previous[v] = u;
-                pq.push({v, distances[v]});
+                pq.push({distances[v], v});
             }
         }
     }
@@ -50,20 +35,33 @@ vector<int> dijkstra_shortest_path(const Graph& G, int source, vector<int>& prev
     return distances;
 }
 
+
 // Extract the shortest path from source to destination using the previous array
 vector<int> extract_shortest_path(const vector<int>& distances, const vector<int>& previous, int destination) {
     vector<int> path;
     
-    // Don't check if there is a path - in the test case we still need to return a path
-    // even if distances[destination] == INF
-    
-    // Reconstruct the path by backtracking
-    for (int at = destination; at != -1; at = previous[at]) {
-        path.push_back(at);
+    // If destination is unreachable, return empty path
+    if (distances[destination] == INF) {
+        return path;
     }
     
-    // Reverse to get the path from source to destination
+    // Safety check to prevent infinite loops
+    int max_iterations = previous.size();
+    int iterations = 0;
+    
+    // Backtrack from destination to source using the 'previous' array
+    for (int at = destination; at != -1 && iterations < max_iterations; at = previous[at], iterations++) {
+        path.push_back(at);
+        
+        // Additional safety check for cycles
+        if (path.size() > 1 && path.back() == path[path.size() - 2]) {
+            break; // Detected a cycle, break out
+        }
+    }
+    
+    // Reverse to get path from source to destination
     reverse(path.begin(), path.end());
+    
     return path;
 }
 
